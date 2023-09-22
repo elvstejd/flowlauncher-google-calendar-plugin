@@ -6,7 +6,7 @@
   "Author": "elvstejd",
   "Version": "1.0.1",
   "Language": "javascript",
-  "Website": "",
+  "Website": "https://github.com/elvstejd/flowlauncher-google-calendar-plugin",
   "ExecuteFileName": "main.js",
   "IcoPath": "Images\\app.png"
 }
