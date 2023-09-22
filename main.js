@@ -69,17 +69,17 @@ async function authenticateGoogle() {
 if (method === "query") {
 	// if parameters is an empty string, ask user to provide a title
 	if (parameters[0] === "") {
-		console.log(JSON.stringify({
+		respondWith({
 			"result": [{
 				"Title": "Provide a title for your event",
 				"Subtitle": "Eg. 'Meeting with John tomorrow at 3pm'",
 				"IcoPath": "Images\\app.png"
 			}]
-		}));
+		})
 		return;
 	}
 
-	console.log(JSON.stringify({
+	respondWith({
 		"result": [{
 			"Title": `${parameters}`,
 			"Subtitle": "Hit Enter to create the event",
@@ -89,64 +89,80 @@ if (method === "query") {
 			},
 			"IcoPath": "Images\\app.png"
 		}]
-	}));
-}
+	})
 
-if (method === "create_event") {
-	const eventTitle = parameters[0];
-	createEvent(eventTitle);
-}
 
-async function createEvent(eventTitle) {
-	const calendar = await authenticateGoogle();
-	fs.appendFileSync('event.log', `Original Event Title: ${eventTitle}\n`);
+	if (method === "create_event") {
+		const eventTitle = parameters[0];
+		createEvent(eventTitle);
+	}
 
-	// Extract date and time from the event title using chrono-node
-	eventTitle = eventTitle.toString();
-	const parsedResults = chrono.parse(eventTitle);
+	async function createEvent(eventTitle) {
+		const calendar = await authenticateGoogle();
 
-	let startDate, endDate;
+		// Extract date and time from the event title using chrono-node
+		eventTitle = eventTitle.toString();
+		const parsedResults = chrono.parse(eventTitle);
 
-	// If a date is found, use it. Otherwise, use the current date and time.
-	if (parsedResults.length > 0) {
-		startDate = parsedResults[0].start.date();
-		if (parsedResults[0].end) {
-			endDate = parsedResults[0].end.date();
+		let startDate, endDate;
+
+		// If a date is found, use it. Otherwise, use the current date and time.
+		if (parsedResults.length > 0) {
+			startDate = parsedResults[0].start.date();
+			if (parsedResults[0].end) {
+				endDate = parsedResults[0].end.date();
+			} else {
+				endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later by default
+			}
+
+			// Remove the parsed date/time from the event title
+			const parsedText = parsedResults[0].text;
+			eventTitle = eventTitle.replace(parsedText, '').trim();
 		} else {
+			startDate = new Date();
 			endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later by default
 		}
 
-		// Remove the parsed date/time from the event title
-		const parsedText = parsedResults[0].text;
-		eventTitle = eventTitle.replace(parsedText, '').trim();
-	} else {
-		startDate = new Date();
-		endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later by default
+		const event = {
+			summary: eventTitle,
+			start: {
+				dateTime: startDate.toISOString(),
+				timeZone: timeZone,
+			},
+			end: {
+				dateTime: endDate.toISOString(),
+				timeZone: timeZone,
+			},
+		};
+
+		try {
+			const response = await calendar.events.insert({
+				calendarId: 'primary',
+				resource: event,
+			});
+			// Log the response to the event log
+			logEvent(`Event created: ${response}`);
+
+
+			respondWith({
+				"method": "Flow.Launcher.ShowMsg",
+				"parameters": [
+					"Event created successfully!",
+					`Event: ${eventTitle}\nStart: ${startDate.toLocaleString()}\nEnd: ${endDate.toLocaleString()}`,
+					"Images\\app.png"
+				]
+			})
+		} catch (error) {
+			// Log the error to the error log
+			logEvent(`Error creating event: ${error}`);
+		}
 	}
+}
 
-	fs.appendFileSync('event.log', `Modified Event Title: ${eventTitle}\n`);
+function respondWith(response) {
+	console.log(JSON.stringify(response));
+}
 
-	const event = {
-		summary: eventTitle,
-		start: {
-			dateTime: startDate.toISOString(),
-			timeZone: timeZone,
-		},
-		end: {
-			dateTime: endDate.toISOString(),
-			timeZone: timeZone,
-		},
-	};
-
-	try {
-		const response = await calendar.events.insert({
-			calendarId: 'primary',
-			resource: event,
-		});
-		// Log the response to the event log
-		fs.appendFileSync('event.log', `Event Response: ${JSON.stringify(response.data)}\n`);
-	} catch (error) {
-		// Log the error to the error log
-		fs.appendFileSync('error.log', `Error: ${error.message}\n`);
-	}
+function logEvent(message) {
+	fs.appendFileSync('event.log', `${message}\n`);
 }
