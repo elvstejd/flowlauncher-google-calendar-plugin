@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const chrono = require('chrono-node');
+const WindowsToaster = require('node-notifier').WindowsToaster;
+
 
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -77,85 +79,97 @@ if (method === "query") {
 			}]
 		})
 		return;
+	} else {
+		logEvent(`Querying for: ${parameters}`);
+		respondWith({
+			"result": [{
+				"Title": `${parameters}`,
+				"Subtitle": "Hit Enter to create the event",
+				"JsonRPCAction": {
+					"method": "create_event",
+					"parameters": [parameters]
+				},
+				"IcoPath": "Images\\app.png"
+			}]
+		});
 	}
+}
+
+if (method === "create_event") {
+	const eventTitle = parameters[0];
+	createEvent(eventTitle);
+}
+
+async function createEvent(eventTitle) {
+	logEvent(`Creating event: ${eventTitle}`);
+	const calendar = await authenticateGoogle();
 
 	respondWith({
-		"result": [{
-			"Title": `${parameters}`,
-			"Subtitle": "Hit Enter to create the event",
-			"JsonRPCAction": {
-				"method": "create_event",
-				"parameters": [parameters]
-			},
-			"IcoPath": "Images\\app.png"
-		}]
+		method: "Flow.Launcher.HideApp",
+		parameters: ["Creating event...", false]
 	})
 
+	// Extract date and time from the event title using chrono-node
+	eventTitle = eventTitle.toString();
+	const parsedResults = chrono.parse(eventTitle);
 
-	if (method === "create_event") {
-		const eventTitle = parameters[0];
-		createEvent(eventTitle);
-	}
+	let startDate, endDate;
 
-	async function createEvent(eventTitle) {
-		const calendar = await authenticateGoogle();
-
-		// Extract date and time from the event title using chrono-node
-		eventTitle = eventTitle.toString();
-		const parsedResults = chrono.parse(eventTitle);
-
-		let startDate, endDate;
-
-		// If a date is found, use it. Otherwise, use the current date and time.
-		if (parsedResults.length > 0) {
-			startDate = parsedResults[0].start.date();
-			if (parsedResults[0].end) {
-				endDate = parsedResults[0].end.date();
-			} else {
-				endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later by default
-			}
-
-			// Remove the parsed date/time from the event title
-			const parsedText = parsedResults[0].text;
-			eventTitle = eventTitle.replace(parsedText, '').trim();
+	// If a date is found, use it. Otherwise, use the current date and time.
+	if (parsedResults.length > 0) {
+		startDate = parsedResults[0].start.date();
+		if (parsedResults[0].end) {
+			endDate = parsedResults[0].end.date();
 		} else {
-			startDate = new Date();
 			endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later by default
 		}
 
-		const event = {
-			summary: eventTitle,
-			start: {
-				dateTime: startDate.toISOString(),
-				timeZone: timeZone,
-			},
-			end: {
-				dateTime: endDate.toISOString(),
-				timeZone: timeZone,
-			},
-		};
+		// Remove the parsed date/time from the event title
+		const parsedText = parsedResults[0].text;
+		eventTitle = eventTitle.replace(parsedText, '').trim();
+	} else {
+		startDate = new Date();
+		endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later by default
+	}
 
-		try {
-			const response = await calendar.events.insert({
-				calendarId: 'primary',
-				resource: event,
-			});
-			// Log the response to the event log
-			logEvent(`Event created: ${response}`);
+	const event = {
+		summary: eventTitle,
+		start: {
+			dateTime: startDate.toISOString(),
+			timeZone: timeZone,
+		},
+		end: {
+			dateTime: endDate.toISOString(),
+			timeZone: timeZone,
+		},
+	};
 
+	try {
+		const response = await calendar.events.insert({
+			calendarId: 'primary',
+			resource: event,
+		});
+		// Log the response to the event log
+		logEvent(`Event created: ${response}`);
 
-			respondWith({
-				"method": "Flow.Launcher.ShowMsg",
-				"parameters": [
-					"Event created successfully!",
-					`Event: ${eventTitle}\nStart: ${startDate.toLocaleString()}\nEnd: ${endDate.toLocaleString()}`,
-					"Images\\app.png"
-				]
-			})
-		} catch (error) {
-			// Log the error to the error log
-			logEvent(`Error creating event: ${error}`);
-		}
+		// Show a notification
+		const notifier = new WindowsToaster({
+			withFallback: false,
+			customPath: undefined
+		});
+
+		notifier.notify({
+			title: 'Event created',
+			message: eventTitle,
+			icon: path.join(__dirname, 'Images', 'app.png'),
+			sound: true,
+			wait: false,
+			appID: 'Google Calendar',
+		});
+
+	} catch (error) {
+		// Log the error to the error log
+		logEvent(`Error creating event: ${error}`);
 	}
 }
 

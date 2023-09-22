@@ -3,6 +3,7 @@
   "dependencies": {
     "chrono-node": "^2.7.0",
     "googleapis": "^39.0.0",
+    "node-notifier": "^10.0.1",
     "open": "^8.4.2"
   }
 }
