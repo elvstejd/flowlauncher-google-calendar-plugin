@@ -67,10 +67,22 @@ async function authenticateGoogle() {
 
 
 if (method === "query") {
+	// if parameters is an empty string, ask user to provide a title
+	if (parameters[0] === "") {
+		console.log(JSON.stringify({
+			"result": [{
+				"Title": "Provide a title for your event",
+				"Subtitle": "Eg. 'Meeting with John tomorrow at 3pm'",
+				"IcoPath": "Images\\app.png"
+			}]
+		}));
+		return;
+	}
+
 	console.log(JSON.stringify({
 		"result": [{
-			"Title": "Create Google Calendar Event",
-			"Subtitle": "Click to create an event with title: " + parameters,
+			"Title": `${parameters}`,
+			"Subtitle": "Hit Enter to create the event",
 			"JsonRPCAction": {
 				"method": "create_event",
 				"parameters": [parameters]
