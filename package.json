@@ -1,0 +1,8 @@
+{
+  "name": "flowlauncher-google-calendar-plugin",
+  "dependencies": {
+    "chrono-node": "^2.7.0",
+    "googleapis": "^39.0.0",
+    "open": "^8.4.2"
+  }
+}

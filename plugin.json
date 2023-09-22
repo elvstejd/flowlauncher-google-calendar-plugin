@@ -1,0 +1,12 @@
+{
+  "ID": "427af2d93887868f8179665uy661c6c3",
+  "ActionKeyword": "gc",
+  "Name": "Google Calendar",
+  "Description": "Google Calendar Integration",
+  "Author": "elvstejd",
+  "Version": "1.0.1",
+  "Language": "javascript",
+  "Website": "",
+  "ExecuteFileName": "main.js",
+  "IcoPath": "Images\\app.png"
+}
