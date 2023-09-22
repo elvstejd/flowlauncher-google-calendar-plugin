@@ -1,5 +1,5 @@
 node_modules
 credentials.json
 token.json
-events.log
+event.log
 package-lock.json
