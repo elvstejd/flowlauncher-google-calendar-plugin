@@ -7,6 +7,7 @@ const chrono = require('chrono-node');
 
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+const timeZone = 'America/Santo_Domingo';
 
 const { method, parameters } = JSON.parse(process.argv[2]);
 
@@ -117,11 +118,11 @@ async function createEvent(eventTitle) {
 		summary: eventTitle,
 		start: {
 			dateTime: startDate.toISOString(),
-			timeZone: 'America/Santo_Domingo',
+			timeZone: timeZone,
 		},
 		end: {
 			dateTime: endDate.toISOString(),
-			timeZone: 'America/Santo_Domingo',
+			timeZone: timeZone,
 		},
 	};
 
